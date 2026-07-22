@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@500;700;900&display=swap');
+    *{box-sizing:border-box}html,body{margin:0;overflow:hidden;font-family:Outfit,system-ui,sans-serif;color:#f7f8ff}
+    body{min-height:740px;background:radial-gradient(circle at 50% 10%,#22285c,#090c20 58%,#050611)}
+    .wrap{width:min(1080px,calc(100% - 24px));margin:auto}.top{display:flex;align-items:end;justify-content:space-between;padding:18px 4px 12px}
+    .eyebrow{color:#70f6ff;font-size:12px;font-weight:700;letter-spacing:.24em;text-transform:uppercase}h1{margin:2px 0 0;font-size:clamp(30px,5vw,52px);line-height:.95;font-weight:900;letter-spacing:-.04em}h1 span{color:#ff4edb;text-shadow:0 0 22px #ff4edb80}
+    .stats{display:flex;gap:8px}.stat{min-width:86px;padding:8px 12px;border:1px solid #ffffff1f;border-radius:14px;background:#ffffff0b;text-align:right}.stat small{display:block;color:#9299bd;font-size:9px;letter-spacing:.12em;text-transform:uppercase}.stat strong{font-size:19px}
+    #mode{color:#70f6ff}.game-shell{position:relative;overflow:hidden;border:1px solid #6ff7ff42;border-radius:22px;background:#0c1030;box-shadow:0 22px 70px #0009,inset 0 0 30px #5b5cff0c}
+    canvas{display:block;width:100%;height:min(52vw,500px);min-height:330px;touch-action:none}.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:20px;background:#090c1bd6;backdrop-filter:blur(5px);transition:opacity .2s}.overlay.hidden{opacity:0;pointer-events:none}.card{max-width:470px;text-align:center}.icon{font-size:54px;filter:drop-shadow(0 0 14px #70f6ff)}h2{margin:5px 0 8px;font-size:36px}.card p{margin:0 auto 20px;color:#b6bada;line-height:1.5}button{border:0;border-radius:13px;padding:13px 28px;color:#07121a;background:linear-gradient(135deg,#70f6ff,#75ffb7);font:800 15px Outfit,sans-serif;cursor:pointer;box-shadow:0 8px 28px #70f6ff40}.help{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:13px 5px;color:#8e96bc;font-size:13px}.keys{display:flex;gap:8px;align-items:center}kbd{padding:5px 8px;border:1px solid #ffffff25;border-bottom-width:3px;border-radius:7px;color:#dce0ff;background:#ffffff0d}.legend{color:#d6d9ef}
+    @media(max-width:700px){.stat:nth-child(2){display:none}.stat{min-width:72px}.help{justify-content:center}.help>span{display:none}}
+  </style>
+</head>
+<body><main class="wrap">
+  <div class="top"><div><div class="eyebrow">5 modos · nivel infinito</div><h1>NEON <span>DASH</span></h1></div><div class="stats"><div class="stat"><small>Modo</small><strong id="mode">CUBE</strong></div><div class="stat"><small>Distancia</small><strong id="score">0</strong></div><div class="stat"><small>Récord</small><strong id="best">0</strong></div></div></div>
+  <section class="game-shell"><canvas id="game" aria-label="Juego Neon Dash infinito"></canvas><div class="overlay" id="overlay"><div class="card"><div class="icon" id="icon">⚡</div><h2 id="title">¿Preparado?</h2><p id="message">Un nivel infinito que se adapta a tu modo. Cruza portales, activa orbes y domina la gravedad.</p><button id="start">EMPEZAR PARTIDA</button></div></div></section>
+  <div class="help"><span class="legend">🟡 impulso · 🔵 gravedad · ◇ portal</span><div class="keys"><kbd>ESPACIO</kbd><kbd>↑</kbd><span>mantén o toca para controlar</span></div></div>
+</main>
+<script>
+(()=>{
+  const canvas=document.querySelector('#game'),ctx=canvas.getContext('2d'),overlay=document.querySelector('#overlay');
+  const scoreEl=document.querySelector('#score'),bestEl=document.querySelector('#best'),modeEl=document.querySelector('#mode');
+  const MODES=['cube','ship','ball','wave','ufo'], ICON={cube:'■',ship:'🚀',ball:'●',wave:'◆',ufo:'🛸'};
+  let W,H,floor,ceil=22,running=false,held=false,last=0,world=0,score=0,speed=6,gravity=1,best=+(localStorage.neonDashBest||0);
+  let hazards=[],portals=[],orbs=[],particles=[],stars=[],generatedTo=0,plannedMode='cube',nextModeAt=650,nextEffectAt=380;
+  const p={x:120,y:0,s:31,vy:0,rot:0,mode:'cube',grounded:false};bestEl.textContent=best;
+  const rand=(a,b)=>a+Math.random()*(b-a), clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+  function resize(){const d=Math.min(devicePixelRatio||1,2),r=canvas.getBoundingClientRect();W=r.width;H=r.height;floor=H-42;canvas.width=W*d;canvas.height=H*d;ctx.setTransform(d,0,0,d,0,0);stars=Array.from({length:45},()=>({x:Math.random()*W,y:rand(ceil,floor),r:rand(.4,1.8),a:rand(.2,.8)}));if(!running)p.y=floor-p.s}
+  function reset(){world=score=0;speed=6;gravity=1;hazards=[];portals=[];orbs=[];particles=[];generatedTo=280;plannedMode='cube';nextModeAt=rand(600,760);nextEffectAt=rand(320,470);Object.assign(p,{y:floor-p.s,vy:0,rot:0,mode:'cube',grounded:true});modeEl.textContent='CUBE';scoreEl.textContent='0';generate()}
+  function start(){reset();running=true;overlay.classList.add('hidden');last=performance.now();requestAnimationFrame(loop)}
+  function addHazard(x,y,w,h,type='block'){hazards.push({x,y,w,h,type})}
+  function addParticles(x,y,color,n=10){for(let i=0;i<n;i++)particles.push({x,y,vx:rand(-4,4),vy:rand(-4,4),life:1,color})}
+  function addGate(x,gapY,gapH){addHazard(x,ceil,34,gapY-ceil,'block');addHazard(x,gapY+gapH,34,floor-gapY-gapH,'block')}
+  function generate(){
+    const ahead=world+W+900;
+    while(generatedTo<ahead){const difficulty=clamp(score/1100,0,1),x=generatedTo;
+      if(x>=nextModeAt){const choices=MODES.filter(m=>m!==plannedMode),to=choices[Math.floor(Math.random()*choices.length)];portals.push({x,type:'mode',to,color:'#b76cff'});plannedMode=to;nextModeAt=x+rand(650,950);generatedTo+=150;continue}
+      if(x>=nextEffectAt){if(Math.random()<.55)portals.push({x,type:'speed',to:Math.random()<.55?'fast':'normal',color:'#ffd65a'});else portals.push({x,type:'gravity',to:'flip',color:'#5affb0'});nextEffectAt=x+rand(520,850);generatedTo+=130;continue}
+      const spacing=rand(115,180)-difficulty*28;
+      if(plannedMode==='cube'||plannedMode==='ufo'){
+        const roll=Math.random();if(roll<.42){const n=Math.random()<.28+difficulty*.25?2:1;for(let i=0;i<n;i++)addHazard(x+i*34,floor-30,32,30,'spike')}
+        else if(roll<.72){const h=rand(42,85);addHazard(x,floor-h,rand(38,65),h,'block');if(Math.random()<.55)orbs.push({x:x+75,y:floor-rand(75,130),kind:'boost',used:false})}
+        else {const gap=rand(100,145)-difficulty*18;addGate(x,rand(ceil+45,floor-gap-45),gap)}
+      }else{
+        const gap=Math.max(92,160-difficulty*62),center=clamp(H/2+rand(-105,105),ceil+gap/2+25,floor-gap/2-25);addGate(x,center-gap/2,gap);
+        if(Math.random()<.35)orbs.push({x:x+70,y:center,kind:Math.random()<.35?'gravity':'boost',used:false})
+      }
+      generatedTo+=spacing;
+    }
+  }
+  function activateOrb(){const orb=orbs.find(o=>!o.used&&Math.abs((o.x-world)-(p.x+p.s/2))<48&&Math.abs(o.y-(p.y+p.s/2))<70);if(!orb)return false;orb.used=true;if(orb.kind==='gravity'){gravity*=-1;p.vy=8*gravity}else p.vy=-12*gravity;addParticles(p.x+p.s/2,p.y+p.s/2,orb.kind==='gravity'?'#5ac8ff':'#ffe45a',16);return true}
+  function press(){if(!running){start();return}held=true;if(activateOrb())return;
+    if(p.mode==='cube'&&p.grounded){p.vy=-13*gravity;p.grounded=false}else if(p.mode==='ball'){gravity*=-1;p.vy=5*gravity}else if(p.mode==='ufo')p.vy=-10*gravity
+  }
+  function release(){held=false}
+  function collide(){const px=p.x+5,py=p.y+5,ps=p.s-10;return hazards.some(o=>{const ox=o.x-world;return px+ps>ox+3&&px<ox+o.w-3&&py+ps>o.y+3&&py<o.y+o.h-3})}
+  function switchMode(to){p.mode=to;modeEl.textContent=to.toUpperCase();p.y=clamp(p.y,ceil+15,floor-p.s-15);p.vy=0;p.grounded=false;addParticles(p.x+p.s/2,p.y+p.s/2,'#bd73ff',22)}
+  function update(dt){
+    world+=speed*dt;score=world/10;scoreEl.textContent=Math.floor(score);generate();
+    if(p.mode==='ship'){p.vy+=(held?-0.62:0.42)*gravity*dt;p.vy=clamp(p.vy,-7.5,7.5)}
+    else if(p.mode==='wave')p.vy=(held?-8:8)*gravity;
+    else p.vy+=.68*gravity*dt;
+    p.y+=p.vy*dt;p.rot+=(p.mode==='ball'?.14:p.mode==='cube'&&!p.grounded?.09:0)*dt;
+    p.grounded=false;if(gravity>0&&p.y>=floor-p.s){p.y=floor-p.s;p.vy=0;p.grounded=true}else if(gravity<0&&p.y<=ceil){p.y=ceil;p.vy=0;p.grounded=true}
+    if((p.mode==='ship'||p.mode==='wave')&&(p.y<=ceil||p.y+p.s>=floor))return die();
+    portals.forEach(q=>{if(!q.used&&q.x-world<p.x+p.s&&q.x-world>p.x-24){q.used=true;if(q.type==='mode')switchMode(q.to);if(q.type==='gravity'){gravity*=-1;p.vy=4*gravity}if(q.type==='speed')speed=q.to==='fast'?Math.min(10.5,speed+1.5):Math.max(6.5,speed-1);addParticles(p.x,p.y,q.color,18)}});
+    hazards=hazards.filter(o=>o.x-world>-100);portals=portals.filter(o=>o.x-world>-100);orbs=orbs.filter(o=>o.x-world>-100);particles.forEach(a=>{a.x+=a.vx*dt;a.y+=a.vy*dt;a.life-=.025*dt});particles=particles.filter(a=>a.life>0);
+    speed=Math.min(11.5,Math.max(speed,6+score/500));if(collide())die()
+  }
+  function die(){if(!running)return;running=false;best=Math.max(best,Math.floor(score));localStorage.neonDashBest=best;bestEl.textContent=best;document.querySelector('#icon').textContent='💥';document.querySelector('#title').textContent='Fin del intento';document.querySelector('#message').textContent=`${Math.floor(score)} m · modo ${p.mode.toUpperCase()}. El nivel será diferente en el próximo intento.`;document.querySelector('#start').textContent='REINTENTAR';overlay.classList.remove('hidden')}
+  function polygon(points,fill){ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();ctx.fillStyle=fill;ctx.fill()}
+  function draw(){
+    const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,'#151a4b');bg.addColorStop(1,'#080b24');ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);stars.forEach(s=>{ctx.globalAlpha=s.a;ctx.fillStyle='#c8d1ff';ctx.beginPath();ctx.arc((s.x-world*.08)%W,s.y,s.r,0,7);ctx.fill()});ctx.globalAlpha=1;
+    ctx.strokeStyle='#6671d51d';for(let x=-(world*.35)%54;x<W;x+=54){ctx.beginPath();ctx.moveTo(x,ceil);ctx.lineTo(x,floor);ctx.stroke()}ctx.fillStyle='#10163a';ctx.fillRect(0,floor,W,H-floor);ctx.fillRect(0,0,W,ceil);ctx.fillStyle='#70f6ff';ctx.shadowColor='#70f6ff';ctx.shadowBlur=12;ctx.fillRect(0,floor,W,3);ctx.fillRect(0,ceil-2,W,2);ctx.shadowBlur=0;
+    hazards.forEach(o=>{const x=o.x-world;if(o.type==='spike'){polygon([[x,o.y+o.h],[x+o.w/2,o.y],[x+o.w,o.y+o.h]],'#ff4edb')}else{const g=ctx.createLinearGradient(x,o.y,x+o.w,o.y+o.h);g.addColorStop(0,'#7d36ff');g.addColorStop(1,'#ff4edb');ctx.fillStyle=g;ctx.fillRect(x,o.y,o.w,o.h);ctx.strokeStyle='#ffb8f1';ctx.strokeRect(x+1,o.y+1,o.w-2,o.h-2)}});
+    portals.forEach(q=>{const x=q.x-world;ctx.strokeStyle=q.color;ctx.lineWidth=7;ctx.shadowColor=q.color;ctx.shadowBlur=18;ctx.beginPath();ctx.ellipse(x,H/2,17,48,0,0,7);ctx.stroke();ctx.shadowBlur=0});
+    orbs.forEach(o=>{const x=o.x-world;ctx.globalAlpha=o.used?.2:1;ctx.fillStyle=o.kind==='gravity'?'#5ac8ff':'#ffe45a';ctx.shadowColor=ctx.fillStyle;ctx.shadowBlur=15;ctx.beginPath();ctx.arc(x,o.y,10,0,7);ctx.fill();ctx.shadowBlur=0;ctx.globalAlpha=1});particles.forEach(a=>{ctx.globalAlpha=a.life;ctx.fillStyle=a.color;ctx.fillRect(a.x,a.y,4,4)});ctx.globalAlpha=1;
+    ctx.save();ctx.translate(p.x+p.s/2,p.y+p.s/2);ctx.rotate(p.rot);ctx.shadowColor='#70f6ff';ctx.shadowBlur=16;ctx.fillStyle='#70f6ff';if(p.mode==='ball'){ctx.beginPath();ctx.arc(0,0,p.s/2,0,7);ctx.fill()}else if(p.mode==='ship')polygon([[-17,11],[-14,-8],[18,0]],'#70f6ff');else if(p.mode==='wave')polygon([[-16,0],[0,-15],[16,0],[0,15]],'#70f6ff');else if(p.mode==='ufo'){ctx.beginPath();ctx.ellipse(0,5,17,9,0,0,7);ctx.fill();ctx.beginPath();ctx.arc(0,-2,10,Math.PI,0);ctx.fill()}else ctx.fillRect(-p.s/2,-p.s/2,p.s,p.s);ctx.shadowBlur=0;ctx.fillStyle='#17205c';ctx.fillRect(-7,-7,5,5);ctx.fillRect(4,-7,5,5);ctx.restore()
+  }
+  function loop(t){if(!running)return;const dt=Math.min((t-last)/16.667,1.6);last=t;update(dt);draw();if(running)requestAnimationFrame(loop)}
+  document.querySelector('#start').onclick=start;canvas.addEventListener('pointerdown',e=>{e.preventDefault();press()});addEventListener('pointerup',release);addEventListener('keydown',e=>{if(['Space','ArrowUp','KeyW'].includes(e.code)&&!e.repeat){e.preventDefault();press()}});addEventListener('keyup',e=>{if(['Space','ArrowUp','KeyW'].includes(e.code))release()});addEventListener('resize',resize);resize();draw();
+})();
+</script></body></html>
