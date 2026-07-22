@@ -1,9 +1,9 @@
 # Neon Dash
 
 Un juego arcade sencillo inspirado en *Geometry Dash*, creado con Python,
-Streamlit y un componente HTML5 Canvas. La versión visible en la cabecera del
-juego debe ser **v2.2** y Streamlit debe mostrar **BUILD 2.2.0** en la esquina
-superior; estos dos indicadores confirman que el despliegue está actualizado.
+Streamlit y un componente HTML5 Canvas. La versión visible en la cabecera debe
+ser **v2.1**; esto permite confirmar que Streamlit desplegó el recurso actualizado.
+Streamlit y un componente HTML5 Canvas.
 
 ## Ejecutar localmente
 
@@ -28,3 +28,6 @@ navegador:
 ```bash
 python -m unittest discover -s tests -v
 ```
+Usa la barra espaciadora, la flecha arriba o un toque/clic sobre el juego para
+saltar los obstáculos. El récord se conserva en el almacenamiento local del
+navegador.
