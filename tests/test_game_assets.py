@@ -31,6 +31,27 @@ class GameAssetsTest(unittest.TestCase):
     def test_canvas_and_touch_controls_are_available(self) -> None:
         self.assertIn('<canvas id="game"', self.html)
         self.assertIn("pointerdown", self.html)
+        self.assertIn("pointercancel", self.html)
+        self.assertIn("keydown", self.html)
+
+    def test_new_attempt_has_a_safe_intro(self) -> None:
+        self.assertIn("const INTRO_DISTANCE=1200", self.html)
+        self.assertIn("START_GRACE_DISTANCE=1000", self.html)
+        self.assertIn("START_GRACE_MS=3000", self.html)
+        self.assertIn("generatedTo=INTRO_DISTANCE", self.html)
+        self.assertIn("runTime>START_GRACE_MS&&world>safeUntil&&collide()", self.html)
+
+    def test_reset_restores_all_runtime_state(self) -> None:
+        reset = self.html.split("function reset()", 1)[1].split("function start()", 1)[0]
+        for state in ("world=score=runTime=0", "speed=6", "gravity=1", "held=false", "hazards=[]"):
+            with self.subTest(state=state):
+                self.assertIn(state, reset)
+
+    def test_only_one_animation_loop_can_run(self) -> None:
+        self.assertIn("function start(){if(running)return", self.html)
+        self.assertIn("const id=++runId", self.html)
+        self.assertIn("if(!running||id!==runId)return", self.html)
+
         self.assertIn("keydown", self.html)
 
 
