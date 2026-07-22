@@ -11,11 +11,13 @@ ROOT = Path(__file__).parents[1]
 class GameAssetsTest(unittest.TestCase):
     def setUp(self) -> None:
         self.html = (ROOT / "neon_dash_v2.html").read_text(encoding="utf-8")
+        self.html = (ROOT / "game.html").read_text(encoding="utf-8")
 
     def test_streamlit_entrypoint_is_valid_python(self) -> None:
         source = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
         ast.parse(source)
         self.assertIn('Path(__file__).parent / "neon_dash_v2.html"', source)
+        self.assertIn('Path(__file__).parent / "game.html"', source)
         self.assertIn("components.html", source)
 
     def test_game_contains_every_playable_mode(self) -> None:
@@ -58,6 +60,8 @@ class GameAssetsTest(unittest.TestCase):
         self.assertIn("function start(){if(running)return", self.html)
         self.assertIn("const id=++runId", self.html)
         self.assertIn("if(!running||id!==runId)return", self.html)
+
+        self.assertIn("keydown", self.html)
 
 
 if __name__ == "__main__":
