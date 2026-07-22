@@ -10,11 +10,13 @@ ROOT = Path(__file__).parents[1]
 
 class GameAssetsTest(unittest.TestCase):
     def setUp(self) -> None:
+        self.html = (ROOT / "neon_dash_v2.html").read_text(encoding="utf-8")
         self.html = (ROOT / "game.html").read_text(encoding="utf-8")
 
     def test_streamlit_entrypoint_is_valid_python(self) -> None:
         source = (ROOT / "streamlit_app.py").read_text(encoding="utf-8")
         ast.parse(source)
+        self.assertIn('Path(__file__).parent / "neon_dash_v2.html"', source)
         self.assertIn('Path(__file__).parent / "game.html"', source)
         self.assertIn("components.html", source)
 
@@ -33,6 +35,13 @@ class GameAssetsTest(unittest.TestCase):
         self.assertIn("pointerdown", self.html)
         self.assertIn("pointercancel", self.html)
         self.assertIn("keydown", self.html)
+
+    def test_html_has_no_source_outside_its_tags(self) -> None:
+        self.assertEqual(self.html.count("<style>"), 1)
+        self.assertEqual(self.html.count("</style>"), 1)
+        self.assertEqual(self.html.count("<script>"), 1)
+        self.assertEqual(self.html.count("</script>"), 1)
+        self.assertTrue(self.html.strip().endswith("</script></body></html>"))
 
     def test_new_attempt_has_a_safe_intro(self) -> None:
         self.assertIn("const INTRO_DISTANCE=1200", self.html)

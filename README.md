@@ -1,6 +1,8 @@
 # Neon Dash
 
 Un juego arcade sencillo inspirado en *Geometry Dash*, creado con Python,
+Streamlit y un componente HTML5 Canvas. La versión visible en la cabecera debe
+ser **v2.1**; esto permite confirmar que Streamlit desplegó el recurso actualizado.
 Streamlit y un componente HTML5 Canvas.
 
 ## Ejecutar localmente

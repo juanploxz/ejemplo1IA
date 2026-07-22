@@ -25,5 +25,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+game_html = (Path(__file__).parent / "neon_dash_v2.html").read_text(encoding="utf-8")
 game_html = (Path(__file__).parent / "game.html").read_text(encoding="utf-8")
 components.html(game_html, height=760, scrolling=False)
