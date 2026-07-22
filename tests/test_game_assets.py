@@ -52,6 +52,8 @@ class GameAssetsTest(unittest.TestCase):
         self.assertIn("const id=++runId", self.html)
         self.assertIn("if(!running||id!==runId)return", self.html)
 
+        self.assertIn("keydown", self.html)
+
 
 if __name__ == "__main__":
     unittest.main()
