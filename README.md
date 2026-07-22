@@ -26,3 +26,6 @@ navegador:
 ```bash
 python -m unittest discover -s tests -v
 ```
+Usa la barra espaciadora, la flecha arriba o un toque/clic sobre el juego para
+saltar los obstáculos. El récord se conserva en el almacenamiento local del
+navegador.
